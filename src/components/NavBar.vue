@@ -25,7 +25,7 @@ const logoutAndReturn = () => {
 </script>
 
 <template>
-  <v-app-bar color="#29C0F7" dark>
+  <v-app-bar color="primary" dark>
     <v-app-bar-title>
       <router-link to="/" class="nav-title">EventHub</router-link>
     </v-app-bar-title>

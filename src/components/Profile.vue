@@ -1,246 +1,193 @@
 <script setup>
-const wrapperStyle = {
+import { ref, computed, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
+import api from '@/services/api'
+
+const router = useRouter()
+
+const isAuthenticated = computed(() => !!localStorage.getItem('token'))
+
+const user = ref(null)
+const success = ref('')
+const error = ref('')
+const bookings = ref([])
+const savedEvents = ref([])
+const loading = ref(false)
+const pageReady = ref(false)
+
+const isEditing = ref(false)
+const isChangingPassword = ref(false)
+const activeTab = ref('overview')
+const profilePhoto = ref(null)
+const profilePhotoFile = ref(null)
+
+const editForm = ref({ name: '', phone: '', bio: '' })
+const passwordForm = ref({ currentPassword: '', newPassword: '', confirmPassword: '' })
+
+const userInitials = computed(() => {
+  if (!user.value?.name) return '?'
+  return user.value.name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()
+})
+
+const upcomingBookings = computed(() => bookings.value.filter(b => new Date(b.event_date) >= new Date()))
+const pastBookings = computed(() => bookings.value.filter(b => new Date(b.event_date) < new Date()))
+
+const memberSince = computed(() => {
+  if (!user.value?.created_at) return '—'
+  return new Date(user.value.created_at).toLocaleDateString()
+})
+
+const clearAlerts = () => setTimeout(() => { success.value = ''; error.value = '' }, 3500)
+const showSuccess = (msg) => { success.value = msg; error.value = ''; clearAlerts() }
+const showError = (msg) => { error.value = msg; success.value = ''; clearAlerts() }
+
+const fetchUser = async () => {
+  try {
+    const res = await api.get('/user')
+    user.value = res.data
+    editForm.value = { name: res.data.name, phone: res.data.phone || '', bio: res.data.bio || '' }
+  } catch {
+    showError('Failed to load profile')
+  }
+}
+
+const fetchBookings = async () => {
+  loading.value = true
+  try {
+    const res = await api.get('/bookings')
+    bookings.value = res.data
+  } catch {
+    showError('Failed to load bookings')
+  } finally {
+    loading.value = false
+  }
+}
+
+const updateProfile = async () => {
+  try {
+    const res = await api.put('/user', editForm.value)
+    user.value = res.data
+    showSuccess('Profile updated')
+    isEditing.value = false
+  } catch {
+    showError('Update failed')
+  }
+}
+
+const changePassword = async () => {
+  if (passwordForm.value.newPassword !== passwordForm.value.confirmPassword) return showError('Passwords mismatch')
+  try {
+    await api.post('/change-password', passwordForm.value)
+    showSuccess('Password updated')
+    isChangingPassword.value = false
+  } catch {
+    showError('Failed')
+  }
+}
+
+const handleLogout = () => {
+  localStorage.removeItem('token')
+  router.push('/login')
+}
+
+const handlePhotoUpload = (e) => {
+  const file = e.target.files[0]
+  if (!file) return
+  profilePhoto.value = URL.createObjectURL(file)
+}
+
+const formatDate = (date) => new Date(date).toLocaleDateString()
+
+onMounted(async () => {
+  if (!isAuthenticated.value) return router.push('/login')
+  await Promise.all([fetchUser(), fetchBookings()])
+  pageReady.value = true
+})
+
+const pageStyle = {
   minHeight: '100vh',
-  padding: '20px',
-  background: 'linear-gradient(135deg, #667eea, #764ba2)'
+  background: '#0f1117',
+  color: '#e8eaf2',
+  fontFamily: 'sans-serif',
+  padding: '20px'
 }
 
-const centerStyle = {
-  display: 'flex',
-  justifyContent: 'center',
-  alignItems: 'center',
-  height: '100vh'
-}
-
-const cardStyle = {
-  background: 'white',
+const card = {
+  background: '#181c27',
   padding: '20px',
   borderRadius: '10px',
   marginBottom: '20px'
 }
 
-const headerGrid = {
-  display: 'grid',
-  gridTemplateColumns: 'auto 1fr auto',
-  gap: '20px',
-  alignItems: 'center'
-}
-
-const avatarStyle = {
-  width: '100px',
-  height: '100px',
-  borderRadius: '50%',
-  background: '#667eea',
-  display: 'flex',
-  alignItems: 'center',
-  justifyContent: 'center',
-  color: 'white',
-  fontSize: '24px'
-}
-
-const bookingCard = {
-  border: '1px solid #ddd',
-  padding: '10px',
-  marginBottom: '10px',
-  borderRadius: '6px'
-}
-
-const btnPrimary = {
-  background: '#667eea',
-  color: 'white',
+const btn = {
   padding: '10px',
   border: 'none',
-  cursor: 'pointer'
-}
-
-const btnSuccess = {
-  background: 'green',
-  color: 'white',
-  padding: '10px',
-  border: 'none'
-}
-
-const btnSecondary = {
-  background: 'gray',
-  color: 'white',
-  padding: '10px',
-  border: 'none'
-}
-
-const btnDanger = {
-  background: 'red',
-  color: 'white',
-  padding: '10px',
-  border: 'none'
-}
-
-const alertSuccess = {
-  background: '#d4edda',
-  padding: '10px',
-  marginBottom: '10px'
-}
-
-const alertError = {
-  background: '#f8d7da',
-  padding: '10px',
-  marginBottom: '10px'
+  cursor: 'pointer',
+  marginRight: '10px'
 }
 </script>
 
 <template>
-<template>
-  <div :style="wrapperStyle">
-    
-    <!-- Not Authenticated -->
-    <div v-if="!user" :style="centerStyle">
-      <div :style="cardStyle">
-        <h2>Please Log In</h2>
-        <p>You need to be logged in to view your profile.</p>
-        <router-link to="/login" :style="btnPrimary">Go to Login</router-link>
-      </div>
-    </div>
+<div :style="pageStyle">
 
-    <!-- Profile -->
-    <div v-else :style="{ maxWidth: '1200px', margin: '0 auto' }">
-
-      <!-- Alerts -->
-      <div v-if="success" :style="alertSuccess">{{ success }}</div>
-      <div v-if="error" :style="alertError">{{ error }}</div>
-
-      <!-- Header -->
-      <div :style="cardStyle">
-        <div :style="headerGrid">
-
-          <!-- Avatar -->
-          <div style="text-align:center">
-            <div :style="avatarStyle">
-              <img v-if="profilePhoto" :src="profilePhoto" style="width:100%;height:100%;object-fit:cover" />
-              <span v-else>{{ userInitials }}</span>
-            </div>
-
-            <input v-if="isEditing" type="file" @change="handlePhotoUpload" />
-          </div>
-
-          <!-- Info -->
-          <div>
-            <h2>{{ user.name }}</h2>
-            <p>{{ user.email }}</p>
-
-            <div style="display:flex; gap:20px;">
-              <div>
-                <strong>{{ upcomingEventsCount }}</strong>
-                <p>Upcoming</p>
-              </div>
-              <div>
-                <strong>{{ pastEventsCount }}</strong>
-                <p>Past</p>
-              </div>
-              <div>
-                <strong>{{ savedEvents.length }}</strong>
-                <p>Saved</p>
-              </div>
-            </div>
-          </div>
-
-          <!-- Actions -->
-          <div>
-            <button v-if="!isEditing" :style="btnPrimary" @click="isEditing = true">
-              Edit
-            </button>
-
-            <button v-else :style="btnSuccess" @click="updateProfile">
-              Save
-            </button>
-
-            <button v-if="isEditing" :style="btnSecondary" @click="isEditing = false">
-              Cancel
-            </button>
-          </div>
-        </div>
-      </div>
-
-      <!-- Tabs -->
-      <div :style="cardStyle">
-        <button @click="activeTab='overview'">Overview</button>
-        <button @click="activeTab='bookings'">Bookings</button>
-        <button @click="activeTab='saved'">Saved</button>
-        <button @click="activeTab='security'">Security</button>
-      </div>
-
-      <!-- CONTENT -->
-      <div :style="cardStyle">
-
-        <!-- Overview -->
-        <div v-if="activeTab==='overview'">
-
-          <div v-if="!isEditing">
-            <p><strong>Name:</strong> {{ user.name }}</p>
-            <p><strong>Email:</strong> {{ user.email }}</p>
-            <p><strong>Phone:</strong> {{ user.phone }}</p>
-          </div>
-
-          <div v-else>
-            <input v-model="editForm.name" placeholder="Name" />
-            <input v-model="editForm.phone" placeholder="Phone" />
-            <textarea v-model="editForm.bio" placeholder="Bio"></textarea>
-          </div>
-        </div>
-
-        <!-- Bookings -->
-        <div v-if="activeTab==='bookings'">
-          <p v-if="loading">Loading...</p>
-
-          <div v-else-if="bookings.length === 0">
-            No bookings yet
-          </div>
-
-          <div v-else>
-            <div v-for="b in bookings" :key="b.id" :style="bookingCard">
-              <h4>{{ b.event_title }}</h4>
-              <p>{{ formatDate(b.event_date) }}</p>
-              <p>{{ b.location }}</p>
-            </div>
-          </div>
-        </div>
-
-        <!-- Saved -->
-        <div v-if="activeTab==='saved'">
-          <div v-if="savedEvents.length === 0">No saved events</div>
-
-          <div v-else>
-            <div v-for="e in savedEvents" :key="e.id" :style="bookingCard">
-              <h4>{{ e.title }}</h4>
-              <p>{{ formatDate(e.date) }}</p>
-            </div>
-          </div>
-        </div>
-
-        <!-- Security -->
-        <div v-if="activeTab==='security'">
-
-          <button :style="btnPrimary" @click="isChangingPassword=true">
-            Change Password
-          </button>
-
-          <div v-if="isChangingPassword">
-            <input type="password" v-model="passwordForm.currentPassword" placeholder="Current" />
-            <input type="password" v-model="passwordForm.newPassword" placeholder="New" />
-            <input type="password" v-model="passwordForm.confirmPassword" placeholder="Confirm" />
-
-            <button :style="btnSuccess" @click="changePassword">
-              Update
-            </button>
-          </div>
-
-          <button :style="btnDanger" @click="handleLogout">
-            Logout
-          </button>
-        </div>
-
-      </div>
-    </div>
+  <div v-if="!isAuthenticated" :style="{textAlign:'center'}">
+    <h2>Login required</h2>
+    <router-link to="/login">Go Login</router-link>
   </div>
-</template>
-</template>
 
+  <div v-else>
 
+    <div v-if="success" :style="{background:'green',padding:'10px'}">{{ success }}</div>
+    <div v-if="error" :style="{background:'red',padding:'10px'}">{{ error }}</div>
+
+    <div :style="card">
+      <h2>{{ user?.name }}</h2>
+      <p>{{ user?.email }}</p>
+
+      <div>
+        <button :style="{...btn, background:'#5b8dee', color:'white'}" @click="isEditing=true">Edit</button>
+        <button v-if="isEditing" :style="{...btn, background:'green'}" @click="updateProfile">Save</button>
+      </div>
+    </div>
+
+    <div :style="card">
+      <button @click="activeTab='overview'">Overview</button>
+      <button @click="activeTab='bookings'">Bookings</button>
+      <button @click="activeTab='security'">Security</button>
+    </div>
+
+    <div :style="card">
+
+      <div v-if="activeTab==='overview'">
+        <p>Name: {{ user?.name }}</p>
+        <p>Email: {{ user?.email }}</p>
+      </div>
+
+      <div v-if="activeTab==='bookings'">
+        <div v-if="loading">Loading...</div>
+        <div v-else>
+          <div v-for="b in bookings" :key="b.id" :style="{border:'1px solid #333',padding:'10px'}">
+            <h4>{{ b.event_title }}</h4>
+            <p>{{ formatDate(b.event_date) }}</p>
+          </div>
+        </div>
+      </div>
+
+      <div v-if="activeTab==='security'">
+        <button @click="isChangingPassword=true">Change Password</button>
+
+        <div v-if="isChangingPassword">
+          <input v-model="passwordForm.currentPassword" placeholder="Current"/>
+          <input v-model="passwordForm.newPassword" placeholder="New"/>
+          <input v-model="passwordForm.confirmPassword" placeholder="Confirm"/>
+          <button @click="changePassword">Update</button>
+        </div>
+
+        <button @click="handleLogout">Logout</button>
+      </div>
+
+    </div>
+
+  </div>
+</div>
+</template>

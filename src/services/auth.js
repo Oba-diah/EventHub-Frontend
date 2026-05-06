@@ -103,6 +103,16 @@ export function useAuth() {
             loading.value = false
         }
     }
+
+    function logout() {
+        user.value = null
+        isAdmin.value = false
+        localStorage.removeItem('authToken')
+        localStorage.removeItem('user')
+        localStorage.removeItem('otpEmail')
+        localStorage.removeItem('isAdmin')
+    }
+
     return {
         user,
         loading,

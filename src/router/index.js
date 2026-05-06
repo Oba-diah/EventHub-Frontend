@@ -1,12 +1,12 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import Login from '@/components/Login.vue'
+import ForgotPassword from '@/components/ForgotPassword.vue'
 import Otp from '@/components/Otp.vue'
 import Admin from '@/components/Admin.vue'
 import HomePage from '@/components/HomePage.vue'
 import Profile from '@/components/Profile.vue'
 import SignUp from '@/components/SignUp.vue'
 import CreateEvent from '@/components/CreateEvent.vue'
-import EventDetails from '@/components/EventDetails.vue'
 import EventList from '@/components/EventList.vue'
 import ContactPage from '@/components/ContactPage.vue'
 
@@ -34,9 +34,9 @@ const router = createRouter({
       component: Profile,
     },
     {
-      path: '/eventdetails/:id',
+      path: '/eventdetails',
       name: 'EventDetails',
-      component: EventDetails,
+      component: () => import('@/components/EventDetails.vue')
     },
     {
       path: '/createevent',
@@ -47,6 +47,11 @@ const router = createRouter({
       path: '/login',
       name: 'Login',
       component: Login,
+    },
+    {
+      path: '/forgot-password',
+      name: 'ForgotPassword',
+      component: ForgotPassword,
     },
     {
       path: '/otp',

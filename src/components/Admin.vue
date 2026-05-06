@@ -1,69 +1,79 @@
 <script setup>
 import { ref, onMounted } from 'vue'
-import api from '../services/api'
+import api from '@/services/api'
 
-const token = localStorage.getItem('authToken')
-
-// ================= STATE =================
 const tab = ref(1)
 const error = ref('')
 const loading = ref(false)
 
-// dialogs
+const showUserDialog = ref(false)
 const showAddEventDialog = ref(false)
 const showEditEventDialog = ref(false)
 
-// ================= USERS =================
 const users = ref([])
-
-async function fetchUsers() {
-  try {
-    const res = await api.get('users', {
-      headers: { Authorization: `Bearer ${token}` }
-    })
-    users.value = res.data || []
-  } catch (err) {
-    error.value = err.response?.data?.message || 'Failed to fetch users'
-  }
-}
-
-// ================= EVENTS =================
 const events = ref([])
-const eventId = ref(null)
+const bookings = ref([])
 
+const userName = ref('')
+const userEmail = ref('')
+const userPassword = ref('')
+const userRole = ref(2)
+
+const eventId = ref(null)
 const eventTitle = ref('')
 const eventDate = ref('')
 const eventLocation = ref('')
 const eventPrice = ref('')
 const eventDescription = ref('')
 
+async function fetchUsers() {
+  try {
+    const res = await api.get('users')
+    users.value = res.data || []
+  } catch {
+    error.value = 'Failed to load users'
+  }
+}
+
+async function createUser() {
+  try {
+    await api.post('users', {
+      name: userName.value,
+      email: userEmail.value,
+      password: userPassword.value,
+      role_id: userRole.value
+    })
+    showUserDialog.value = false
+    fetchUsers()
+  } catch {
+    error.value = 'Failed to create user'
+  }
+}
+
 async function fetchEvents() {
   try {
     const res = await api.get('events')
     events.value = res.data || []
-  } catch (err) {
-    error.value = 'Failed to fetch events'
+  } catch {
+    error.value = 'Failed to load events'
   }
 }
 
 async function addEvent() {
   try {
-    await api.post(
-      'events',
-      {
-        title: eventTitle.value,
-        date: eventDate.value,
-        location: eventLocation.value,
-        price: eventPrice.value,
-        description: eventDescription.value
-      },
-      { headers: { Authorization: `Bearer ${token}` } }
-    )
+    await api.post('events', {
+      title: eventTitle.value,
+      date: eventDate.value,
+      location: eventLocation.value,
+      price: eventPrice.value,
+      description: eventDescription.value
+    })
 
-    close()
+    showAddEventDialog.value = false
+    resetEventForm()
     fetchEvents()
-  } catch (err) {
-    error.value = err.response?.data?.message || 'Failed to create event'
+  } catch {
+    error.value = 'Failed to create event'
   }
 }
 
@@ -79,44 +89,33 @@ function editEvent(e) {
 
 async function updateEvent() {
   try {
-    await api.put(
-      `events/${eventId.value}`,
-      {
-        title: eventTitle.value,
-        date: eventDate.value,
-        location: eventLocation.value,
-        price: eventPrice.value,
-        description: eventDescription.value
-      },
-      { headers: { Authorization: `Bearer ${token}` } }
-    )
+    await api.put(`events/${eventId.value}`, {
+      title: eventTitle.value,
+      date: eventDate.value,
+      location: eventLocation.value,
+      price: eventPrice.value,
+      description: eventDescription.value
+    })
 
-    close()
+    showEditEventDialog.value = false
+    resetEventForm()
     fetchEvents()
-  } catch (err) {
-    error.value = err.response?.data?.message || 'Failed to update event'
+  } catch {
+    error.value = 'Failed to update event'
   }
 }
-
-// ================= BOOKINGS =================
-const bookings = ref([])
 
 async function fetchBookings() {
   try {
-    const res = await api.get('bookings', {
-      headers: { Authorization: `Bearer ${token}` }
-    })
+    const res = await api.get('bookings')
     bookings.value = res.data || []
-  } catch (err) {
-    error.value = err.response?.data?.message || 'Failed to fetch bookings'
+  } catch {
+    error.value = 'Failed to load bookings'
   }
 }
 
-// ================= RESET =================
-function close() {
-  showAddEventDialog.value = false
-  showEditEventDialog.value = false
-
+function resetEventForm() {
+  eventId.value = null
   eventTitle.value = ''
   eventDate.value = ''
   eventLocation.value = ''
@@ -124,7 +123,6 @@ function close() {
   eventDescription.value = ''
 }
 
-// ================= INIT =================
 onMounted(() => {
   fetchUsers()
   fetchEvents()
@@ -135,14 +133,10 @@ onMounted(() => {
 <template>
   <v-container class="mt-10">
 
-    <!-- ERROR -->
-    <v-alert v-if="error" type="error" class="mb-4">
-      {{ error }}
-    </v-alert>
+    <v-alert v-if="error" type="error">{{ error }}</v-alert>
 
     <v-card>
-      <!-- TABS -->
-      <v-tabs v-model="tab" align-tabs="center" color="primary">
+      <v-tabs v-model="tab">
         <v-tab :value="1">Users</v-tab>
         <v-tab :value="2">Events</v-tab>
         <v-tab :value="3">Bookings</v-tab>
@@ -150,122 +144,92 @@ onMounted(() => {
 
       <v-tabs-window v-model="tab">
 
-        <!-- USERS -->
         <v-tabs-window-item :value="1">
+          <v-btn @click="showUserDialog = true">Add User</v-btn>
+
           <v-table>
-            <thead>
-              <tr>
-                <th>Name</th>
-                <th>Email</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr v-for="u in users" :key="u.id">
-                <td>{{ u.name }}</td>
-                <td>{{ u.email }}</td>
-              </tr>
-            </tbody>
+            <tr v-for="u in users" :key="u.id">
+              <td>{{ u.name }}</td>
+              <td>{{ u.email }}</td>
+            </tr>
           </v-table>
         </v-tabs-window-item>
 
-        <!-- EVENTS -->
         <v-tabs-window-item :value="2">
-          <v-container>
-            <v-row>
-              <v-col align="right">
-                <v-btn icon="mdi-plus" @click="showAddEventDialog = true"></v-btn>
-              </v-col>
-            </v-row>
+          <v-btn @click="showAddEventDialog = true">Add Event</v-btn>
 
-            <v-table>
-              <thead>
-                <tr>
-                  <th>Title</th>
-                  <th>Date</th>
-                  <th>Location</th>
-                  <th>Price</th>
-                  <th>Action</th>
-                </tr>
-              </thead>
-
-              <tbody>
-                <tr v-for="e in events" :key="e.id">
-                  <td>{{ e.title }}</td>
-                  <td>{{ e.date }}</td>
-                  <td>{{ e.location }}</td>
-                  <td>{{ e.price }}</td>
-
-                  <td>
-                    <v-btn size="small" @click="editEvent(e)">Edit</v-btn>
-                  </td>
-                </tr>
-              </tbody>
-            </v-table>
-          </v-container>
+          <v-table>
+            <tr v-for="e in events" :key="e.id">
+              <td>{{ e.title }}</td>
+              <td>{{ e.date }}</td>
+              <td>
+                <v-btn @click="editEvent(e)">Edit</v-btn>
+              </td>
+            </tr>
+          </v-table>
         </v-tabs-window-item>
 
-        <!-- BOOKINGS -->
         <v-tabs-window-item :value="3">
           <v-table>
-            <thead>
-              <tr>
-                <th>User</th>
-                <th>Event</th>
-                <th>Date</th>
-                <th>Tickets</th>
-              </tr>
-            </thead>
-
-            <tbody>
-              <tr v-for="b in bookings" :key="b.id">
-                <td>{{ b.user_name }}</td>
-                <td>{{ b.event_title }}</td>
-                <td>{{ b.event_date }}</td>
-                <td>{{ b.quantity }}</td>
-              </tr>
-            </tbody>
+            <tr v-for="b in bookings" :key="b.id">
+              <td>{{ b.user_name }}</td>
+              <td>{{ b.event_title }}</td>
+              <td>{{ b.quantity }}</td>
+            </tr>
           </v-table>
         </v-tabs-window-item>
 
       </v-tabs-window>
     </v-card>
 
-    <!-- ADD EVENT -->
-    <v-dialog v-model="showAddEventDialog" max-width="600">
+    <v-dialog v-model="showUserDialog">
       <v-card>
-        <v-card-title>Add Event</v-card-title>
+        <v-card-title>Create User</v-card-title>
 
         <v-card-text>
-          <v-text-field label="Title" v-model="eventTitle" />
-          <v-text-field label="Location" v-model="eventLocation" />
-          <v-text-field label="Price" v-model="eventPrice" />
-          <v-date-input label="Date" v-model="eventDate" />
-          <v-textarea label="Description" v-model="eventDescription" />
+          <v-text-field v-model="userName" label="Name" />
+          <v-text-field v-model="userEmail" label="Email" />
+          <v-text-field v-model="userPassword" label="Password" type="password" />
         </v-card-text>
 
         <v-card-actions>
-          <v-btn @click="close()">Cancel</v-btn>
-          <v-btn @click="addEvent()">Save</v-btn>
+          <v-btn @click="createUser">Save</v-btn>
         </v-card-actions>
       </v-card>
     </v-dialog>
 
-    <!-- EDIT EVENT -->
-    <v-dialog v-model="showEditEventDialog" max-width="600">
+    <v-dialog v-model="showAddEventDialog">
+      <v-card>
+        <v-card-title>Add Event</v-card-title>
+
+        <v-card-text>
+          <v-text-field v-model="eventTitle" label="Title" />
+          <v-text-field v-model="eventLocation" label="Location" />
+          <v-text-field v-model="eventPrice" label="Price" />
+          <v-text-field v-model="eventDate" label="Date" />
+          <v-textarea v-model="eventDescription" label="Description" />
+        </v-card-text>
+
+        <v-card-actions>
+          <v-btn @click="addEvent">Save</v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
+
+    <v-dialog v-model="showEditEventDialog">
       <v-card>
         <v-card-title>Edit Event</v-card-title>
 
         <v-card-text>
-          <v-text-field label="Title" v-model="eventTitle" />
-          <v-text-field label="Location" v-model="eventLocation" />
-          <v-text-field label="Price" v-model="eventPrice" />
-          <v-date-input label="Date" v-model="eventDate" />
-          <v-textarea label="Description" v-model="eventDescription" />
+          <v-text-field v-model="eventTitle" label="Title" />
+          <v-text-field v-model="eventLocation" label="Location" />
+          <v-text-field v-model="eventPrice" label="Price" />
+          <v-text-field v-model="eventDate" label="Date" />
+          <v-textarea v-model="eventDescription" label="Description" />
         </v-card-text>
 
         <v-card-actions>
-          <v-btn @click="close()">Cancel</v-btn>
-          <v-btn @click="updateEvent()">Update</v-btn>
+          <v-btn @click="updateEvent">Update</v-btn>
         </v-card-actions>
       </v-card>
     </v-dialog>
