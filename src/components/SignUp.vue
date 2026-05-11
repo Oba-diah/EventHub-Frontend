@@ -6,7 +6,17 @@ import { useAuth } from '@/services/auth'
 const router = useRouter()
 const { register, loading, error } = useAuth()
 
-const form = ref({ name: '', email: '', password: '', passwordConfirm: '', phone: '', agreeToTerms: false })
+const form = ref({
+  name: '',
+  email: '',
+  password: '',
+  passwordConfirm: '',
+  phone: '',
+  gender: '',
+  dateOfBirth: '',
+  location: '',
+  agreeToTerms: false
+})
 const errors = ref({})
 const showPassword = ref(false)
 const showConfirm = ref(false)
@@ -36,7 +46,7 @@ const strengthMeta = computed(() => {
   ][score <= 2 ? 0 : score <= 3 ? 1 : score <= 4 ? 2 : 3]
 })
 
-onMounted(() => { if (localStorage.getItem('authToken')) router.push('/') })
+onMounted(() => { if (localStorage.getItem('token')) router.push('/') })
 
 const REGEXES = {
   email: /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
@@ -54,7 +64,7 @@ const validate = () => {
   else if (!REGEXES.email.test(email)) errors.value.email = 'Please enter a valid email address'
 
   if (!password) errors.value.password = 'Password is required'
-  else if (password.length < 6) errors.value.password = 'Password must be at least 6 characters'
+  else if (password.length < 8) errors.value.password = 'Password must be at least 8 characters'
   else if (!/[a-zA-Z]/.test(password) || !/[0-9]/.test(password))
     errors.value.password = 'Password must contain at least one letter and one number'
 
@@ -74,9 +84,18 @@ const submit = async () => {
   if (!validate()) return
   isSubmitting.value = true
   try {
-    const { name, email, password, phone } = form.value
-    await register({ name, email, password, phoneNumber: phone || null, role_id: 3 })
-    router.push('/')
+    const { name, email, password, phone, gender, dateOfBirth, location } = form.value
+    await register({
+      name,
+      email,
+      password,
+      phoneNumber: phone || null,
+      gender: gender || null,
+      dateOfBirth: dateOfBirth || null,
+      location: location || null,
+      role_id: 2
+    })
+    router.push('/login')
   } catch {
     signupError.value = error.value || 'Registration failed. Please try again.'
   } finally {
@@ -199,6 +218,37 @@ const inp = (field, extra) => mx(s.input, extra, errors.value[field] && s.inputI
           <span v-if="errors.phone" :style="s.error">{{ errors.phone }}</span>
         </div>
 
+        <div :style="s.field">
+          <label :style="s.label" for="gender">
+            Gender <span :style="s.optional">(Optional)</span>
+          </label>
+          <select id="gender" v-model="form.gender" :style="inp('gender')" :disabled="isSubmitting">
+            <option value="">Select gender</option>
+            <option value="male">Male</option>
+            <option value="female">Female</option>
+            <option value="other">Other</option>
+          </select>
+          <span v-if="errors.gender" :style="s.error">{{ errors.gender }}</span>
+        </div>
+
+        <div :style="s.field">
+          <label :style="s.label" for="dateOfBirth">
+            Date of Birth <span :style="s.optional">(Optional)</span>
+          </label>
+          <input id="dateOfBirth" v-model="form.dateOfBirth" type="date" :style="inp('dateOfBirth')"
+            :disabled="isSubmitting" />
+          <span v-if="errors.dateOfBirth" :style="s.error">{{ errors.dateOfBirth }}</span>
+        </div>
+
+        <div :style="s.field">
+          <label :style="s.label" for="location">
+            Location <span :style="s.optional">(Optional)</span>
+          </label>
+          <input id="location" v-model="form.location" type="text" :style="inp('location')"
+            placeholder="Enter your location" autocomplete="street-address" :disabled="isSubmitting" />
+          <span v-if="errors.location" :style="s.error">{{ errors.location }}</span>
+        </div>
+
         <!-- Password -->
         <div :style="s.field">
           <label :style="s.label" for="password">Password</label>
@@ -217,7 +267,7 @@ const inp = (field, extra) => mx(s.input, extra, errors.value[field] && s.inputI
             <small :style="{ ...s.strengthText, color: strengthMeta[2] }">Strength: {{ strengthMeta[0] }}</small>
           </template>
           <span v-if="errors.password" :style="s.error">{{ errors.password }}</span>
-          <small :style="s.hint">At least 6 characters, must contain letters and numbers</small>
+          <small :style="s.hint">At least 8 characters, must contain letters and numbers</small>
         </div>
 
         <!-- Confirm Password -->

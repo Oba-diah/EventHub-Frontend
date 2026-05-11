@@ -1,61 +1,47 @@
 import { ref, computed } from 'vue'
-import api  from './api';
+import api from './api'
 
-const user = ref(null)
+const user = ref(JSON.parse(localStorage.getItem('user')) || null)
 const loading = ref(false)
 const error = ref(null)
 
 export function useAuth() {
-    const isAuthenticated = computed(() => !!user.value)
-    const isAdmin = ref(false)
+    const isAuthenticated = computed(() => !!localStorage.getItem('token'))
+    const isAdmin = computed(() => user.value?.role_id === 1)
 
-
-    // Login
     async function login(credentials) {
         loading.value = true
         error.value = null
 
         try {
+            if (!credentials.email || !credentials.password) {
+                throw new Error('Email and password required')
+            }
 
-        if (!credentials.email || !credentials.password) {
-            throw new Error('Email and password are required')
-        }
+            const response = await api.post('login', credentials)
 
-        const response = await api.post('login', credentials) //important line,connects backend and frontend
+            if (response.data.message === 'OTP sent to your email.') {
+                localStorage.setItem('otpEmail', credentials.email)
+                localStorage.setItem('otpPassword', credentials.password)
+                return response
+            }
 
-        console.log(response.data)
-
-        if (response.data.message === 'OTP sent to your email.') {
-            localStorage.setItem('otpEmail', credentials.email)
-            return response
-        } else {
-            throw new Error('Invalid response format from server')
-        }
-
+            throw new Error('Unexpected server response')
         } catch (err) {
-            error.value = err.response?.data?.message || err.message || 'Login failed'
+            error.value = err.response?.data?.message || err.message
             throw err
         } finally {
             loading.value = false
         }
     }
 
-    // Register
     async function register(formData) {
         loading.value = true
         error.value = null
-        try {
-             const response = await api.post('register', formData)
-             const { token, user: userData } = response.data
-            if (token && userData) {
-                user.value = userData
-                localStorage.setItem("authToken", token);
-                localStorage.setItem("user", JSON.stringify(user));
 
-                return response
-            } else {
-                throw new Error('Invalid response format from server')
-            }
+        try {
+            const response = await api.post('register', formData)
+            return response
         } catch (err) {
             error.value = err.response?.data?.message || 'Registration failed'
             throw err
@@ -64,40 +50,27 @@ export function useAuth() {
         }
     }
 
-    // Verify OTP
     async function verifyOtp(credentials) {
         loading.value = true
         error.value = null
 
         try {
+            const response = await api.post('verify-otp', credentials)
+            const { token, user: userData } = response.data
 
-        if (!credentials.email || !credentials.otp) {
-            throw new Error('Email and OTP are required')
-        }
+            if (!token || !userData) {
+                throw new Error('Invalid server response')
+            }
 
-        const response = await api.post('verify-otp', credentials)
-        const { token, user: userData } = response.data
-
-        console.log(response.data)
-
-        if (token && userData) {
             user.value = userData
 
-            if (user.value.role_id == 1) isAdmin.value = true
-
-            console.log(user.value)
-
-            localStorage.setItem("authToken", token);
-            localStorage.setItem("user", JSON.stringify(user.value));
-            localStorage.setItem("isAdmin", isAdmin.value);
+            localStorage.setItem('token', token)
+            localStorage.setItem('user', JSON.stringify(userData))
+            localStorage.setItem('isAdmin', userData?.role_id === 1 ? 'true' : 'false')
 
             return response
-        } else {
-            throw new Error('Invalid response format from server')
-        }
-
         } catch (err) {
-            error.value = err.response?.data?.message || err.message || 'OTP verification failed'
+            error.value = err.response?.data?.message || err.message
             throw err
         } finally {
             loading.value = false
@@ -106,10 +79,10 @@ export function useAuth() {
 
     function logout() {
         user.value = null
-        isAdmin.value = false
-        localStorage.removeItem('authToken')
+        localStorage.removeItem('token')
         localStorage.removeItem('user')
         localStorage.removeItem('otpEmail')
+        localStorage.removeItem('otpPassword')
         localStorage.removeItem('isAdmin')
     }
 
@@ -120,8 +93,8 @@ export function useAuth() {
         isAuthenticated,
         isAdmin,
         login,
-        verifyOtp,
         register,
-        logout,
+        verifyOtp,
+        logout
     }
- }
+}

@@ -9,10 +9,10 @@ const isLoggedIn = ref(false)
 const isAdmin = ref(false)
 
 onMounted(() => {
-  const authToken = localStorage.getItem('authToken')
+  const token = localStorage.getItem('token')
   const adminStatus = localStorage.getItem('isAdmin')
   
-  isLoggedIn.value = !!authToken
+  isLoggedIn.value = !!token
   isAdmin.value = adminStatus === 'true' || adminStatus === true
 })
 
@@ -33,7 +33,6 @@ const logoutAndReturn = () => {
     <v-spacer />
     <v-btn text to="/">Home</v-btn>
     <v-btn text to="/events">Events</v-btn>
-    <v-btn text to="/contact">Contact</v-btn>
     <v-btn text to="/profile" v-if="isLoggedIn">Profile</v-btn>
     <v-btn text to="/admin" v-if="isAdmin && isLoggedIn">Admin</v-btn>
 

@@ -1,193 +1,268 @@
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import api from '@/services/api'
 
+// ── Router ────────────────────────────────────────────────────────────────────
 const router = useRouter()
 
-const isAuthenticated = computed(() => !!localStorage.getItem('token'))
-
+// ── State ──────────────────────────────────────────────────────────────────────
 const user = ref(null)
-const success = ref('')
-const error = ref('')
-const bookings = ref([])
-const savedEvents = ref([])
+const events = ref([])
 const loading = ref(false)
-const pageReady = ref(false)
+const error = ref('')
 
-const isEditing = ref(false)
-const isChangingPassword = ref(false)
-const activeTab = ref('overview')
-const profilePhoto = ref(null)
-const profilePhotoFile = ref(null)
-
-const editForm = ref({ name: '', phone: '', bio: '' })
-const passwordForm = ref({ currentPassword: '', newPassword: '', confirmPassword: '' })
-
-const userInitials = computed(() => {
-  if (!user.value?.name) return '?'
-  return user.value.name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()
+// ── Lifecycle ──────────────────────────────────────────────────────────────────
+onMounted(async () => {
+  if (!localStorage.getItem('token')) {
+    router.push('/login')
+    return
+  }
+  await Promise.all([fetchUser(), fetchRecentEvents()])
 })
 
-const upcomingBookings = computed(() => bookings.value.filter(b => new Date(b.event_date) >= new Date()))
-const pastBookings = computed(() => bookings.value.filter(b => new Date(b.event_date) < new Date()))
+// ── Methods ────────────────────────────────────────────────────────────────────
+function authHeaders() {
+  const token = localStorage.getItem('token')
+  return { headers: { Authorization: `Bearer ${token}` } }
+}
 
-const memberSince = computed(() => {
-  if (!user.value?.created_at) return '—'
-  return new Date(user.value.created_at).toLocaleDateString()
-})
-
-const clearAlerts = () => setTimeout(() => { success.value = ''; error.value = '' }, 3500)
-const showSuccess = (msg) => { success.value = msg; error.value = ''; clearAlerts() }
-const showError = (msg) => { error.value = msg; success.value = ''; clearAlerts() }
-
-const fetchUser = async () => {
+async function fetchUser() {
   try {
-    const res = await api.get('/user')
+    const res = await api.get('user', authHeaders())
     user.value = res.data
-    editForm.value = { name: res.data.name, phone: res.data.phone || '', bio: res.data.bio || '' }
-  } catch {
-    showError('Failed to load profile')
+  } catch (err) {
+    error.value = 'Failed to load user details'
   }
 }
 
-const fetchBookings = async () => {
-  loading.value = true
+async function fetchRecentEvents() {
   try {
-    const res = await api.get('/bookings')
-    bookings.value = res.data
-  } catch {
-    showError('Failed to load bookings')
+    loading.value = true
+    const res = await api.get('bookings', authHeaders())
+    events.value = res.data || []
+  } catch (err) {
+    error.value = 'Failed to load events'
   } finally {
     loading.value = false
   }
 }
 
-const updateProfile = async () => {
-  try {
-    const res = await api.put('/user', editForm.value)
-    user.value = res.data
-    showSuccess('Profile updated')
-    isEditing.value = false
-  } catch {
-    showError('Update failed')
-  }
+function formatDate(date) {
+  return new Date(date).toLocaleDateString('en-US', {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric'
+  })
 }
 
-const changePassword = async () => {
-  if (passwordForm.value.newPassword !== passwordForm.value.confirmPassword) return showError('Passwords mismatch')
-  try {
-    await api.post('/change-password', passwordForm.value)
-    showSuccess('Password updated')
-    isChangingPassword.value = false
-  } catch {
-    showError('Failed')
-  }
-}
-
-const handleLogout = () => {
+function logout() {
   localStorage.removeItem('token')
+  localStorage.removeItem('user')
+  localStorage.removeItem('otpEmail')
+  localStorage.removeItem('otpPassword')
+  localStorage.removeItem('isAdmin')
   router.push('/login')
 }
 
-const handlePhotoUpload = (e) => {
-  const file = e.target.files[0]
-  if (!file) return
-  profilePhoto.value = URL.createObjectURL(file)
+// ── Styles ────────────────────────────────────────────────────────────────────
+const s = {
+  wrapper: {
+    minHeight: '100vh',
+    background: 'linear-gradient(135deg, #667eea, #764ba2)',
+    padding: '2rem 1rem',
+    fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
+  },
+  container: {
+    maxWidth: '900px',
+    margin: '0 auto',
+  },
+  header: {
+    background: 'white',
+    borderRadius: '12px',
+    padding: '2rem',
+    marginBottom: '2rem',
+    boxShadow: '0 10px 40px rgba(0,0,0,.15)',
+  },
+  headerTop: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: '1.5rem',
+  },
+  userInfo: {
+    flex: 1,
+  },
+  h1: {
+    fontSize: '2rem',
+    fontWeight: 700,
+    color: '#1f2937',
+    margin: '0 0 .5rem',
+  },
+  email: {
+    color: '#6b7280',
+    fontSize: '1.05rem',
+    margin: '0 0 1rem',
+  },
+  logoutBtn: {
+    padding: '.75rem 1.5rem',
+    background: '#dc2626',
+    color: 'white',
+    border: 'none',
+    borderRadius: '8px',
+    fontSize: '1rem',
+    fontWeight: 600,
+    cursor: 'pointer',
+    transition: 'background 0.2s',
+  },
+  userDetails: {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+    gap: '1rem',
+    paddingTop: '1.5rem',
+    borderTop: '1px solid #e5e7eb',
+  },
+  detail: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '.25rem',
+  },
+  detailLabel: {
+    fontSize: '.85rem',
+    color: '#9ca3af',
+    fontWeight: 600,
+    textTransform: 'uppercase',
+  },
+  detailValue: {
+    fontSize: '1.1rem',
+    color: '#374151',
+    fontWeight: 500,
+  },
+  section: {
+    background: 'white',
+    borderRadius: '12px',
+    padding: '2rem',
+    marginBottom: '2rem',
+    boxShadow: '0 10px 40px rgba(0,0,0,.15)',
+  },
+  sectionTitle: {
+    fontSize: '1.5rem',
+    fontWeight: 700,
+    color: '#1f2937',
+    marginBottom: '1.5rem',
+    borderBottom: '2px solid #667eea',
+    paddingBottom: '.75rem',
+  },
+  emptyState: {
+    textAlign: 'center',
+    padding: '2rem 1rem',
+    color: '#9ca3af',
+  },
+  eventCard: {
+    background: '#f9fafb',
+    border: '1px solid #e5e7eb',
+    borderRadius: '10px',
+    padding: '1.5rem',
+    marginBottom: '1rem',
+    transition: 'all 0.2s',
+  },
+  eventTitle: {
+    fontSize: '1.1rem',
+    fontWeight: 700,
+    color: '#1f2937',
+    marginBottom: '.5rem',
+  },
+  eventDate: {
+    fontSize: '.95rem',
+    color: '#667eea',
+    fontWeight: 600,
+    marginBottom: '.5rem',
+  },
+  eventLocation: {
+    fontSize: '.9rem',
+    color: '#6b7280',
+    marginBottom: '1rem',
+  },
+  loadingText: {
+    textAlign: 'center',
+    color: '#9ca3af',
+    padding: '2rem',
+  },
+  errorAlert: {
+    padding: '1rem 1.25rem',
+    background: '#fee2e2',
+    border: '1px solid #fecaca',
+    borderRadius: '8px',
+    color: '#991b1b',
+    marginBottom: '1.5rem',
+  },
 }
 
-const formatDate = (date) => new Date(date).toLocaleDateString()
-
-onMounted(async () => {
-  if (!isAuthenticated.value) return router.push('/login')
-  await Promise.all([fetchUser(), fetchBookings()])
-  pageReady.value = true
-})
-
-const pageStyle = {
-  minHeight: '100vh',
-  background: '#0f1117',
-  color: '#e8eaf2',
-  fontFamily: 'sans-serif',
-  padding: '20px'
-}
-
-const card = {
-  background: '#181c27',
-  padding: '20px',
-  borderRadius: '10px',
-  marginBottom: '20px'
-}
-
-const btn = {
-  padding: '10px',
-  border: 'none',
-  cursor: 'pointer',
-  marginRight: '10px'
-}
+const mx = (...objs) => Object.assign({}, ...objs)
 </script>
 
 <template>
-<div :style="pageStyle">
+  <div :style="s.wrapper">
+    <div :style="s.container">
 
-  <div v-if="!isAuthenticated" :style="{textAlign:'center'}">
-    <h2>Login required</h2>
-    <router-link to="/login">Go Login</router-link>
-  </div>
-
-  <div v-else>
-
-    <div v-if="success" :style="{background:'green',padding:'10px'}">{{ success }}</div>
-    <div v-if="error" :style="{background:'red',padding:'10px'}">{{ error }}</div>
-
-    <div :style="card">
-      <h2>{{ user?.name }}</h2>
-      <p>{{ user?.email }}</p>
-
-      <div>
-        <button :style="{...btn, background:'#5b8dee', color:'white'}" @click="isEditing=true">Edit</button>
-        <button v-if="isEditing" :style="{...btn, background:'green'}" @click="updateProfile">Save</button>
-      </div>
-    </div>
-
-    <div :style="card">
-      <button @click="activeTab='overview'">Overview</button>
-      <button @click="activeTab='bookings'">Bookings</button>
-      <button @click="activeTab='security'">Security</button>
-    </div>
-
-    <div :style="card">
-
-      <div v-if="activeTab==='overview'">
-        <p>Name: {{ user?.name }}</p>
-        <p>Email: {{ user?.email }}</p>
+      <!-- Error Alert -->
+      <div v-if="error" :style="s.errorAlert" role="alert">
+        {{ error }}
       </div>
 
-      <div v-if="activeTab==='bookings'">
-        <div v-if="loading">Loading...</div>
-        <div v-else>
-          <div v-for="b in bookings" :key="b.id" :style="{border:'1px solid #333',padding:'10px'}">
-            <h4>{{ b.event_title }}</h4>
-            <p>{{ formatDate(b.event_date) }}</p>
+      <!-- User Header Card -->
+      <div :style="s.header">
+        <div :style="s.headerTop">
+          <div :style="s.userInfo">
+            <h1 :style="s.h1">{{ user?.name || 'User Profile' }}</h1>
+            <p :style="s.email">{{ user?.email }}</p>
+          </div>
+          <button :style="s.logoutBtn" @click="logout">
+            Logout
+          </button>
+        </div>
+
+        <!-- User Details Grid -->
+        <div v-if="user" :style="s.userDetails">
+          <div :style="s.detail">
+            <span :style="s.detailLabel">Phone</span>
+            <span :style="s.detailValue">{{ user.phone || '—' }}</span>
+          </div>
+          <div :style="s.detail">
+            <span :style="s.detailLabel">Member Since</span>
+            <span :style="s.detailValue">{{ formatDate(user.created_at) }}</span>
+          </div>
+          <div :style="s.detail">
+            <span :style="s.detailLabel">Status</span>
+            <span :style="s.detailValue">Active</span>
           </div>
         </div>
       </div>
 
-      <div v-if="activeTab==='security'">
-        <button @click="isChangingPassword=true">Change Password</button>
+      <!-- Recent Events Section -->
+      <div :style="s.section">
+        <h2 :style="s.sectionTitle">Recent Events</h2>
 
-        <div v-if="isChangingPassword">
-          <input v-model="passwordForm.currentPassword" placeholder="Current"/>
-          <input v-model="passwordForm.newPassword" placeholder="New"/>
-          <input v-model="passwordForm.confirmPassword" placeholder="Confirm"/>
-          <button @click="changePassword">Update</button>
+        <div v-if="loading" :style="s.loadingText">
+          Loading your events...
         </div>
 
-        <button @click="handleLogout">Logout</button>
+        <div v-else-if="events.length === 0" :style="s.emptyState">
+          <p>You haven't booked any events yet.</p>
+          <router-link to="/events" style="color: #667eea; textDecoration: 'underline'">
+            Browse events
+          </router-link>
+        </div>
+
+        <div v-else>
+          <div v-for="event in events" :key="event.id" :style="s.eventCard">
+            <div :style="s.eventTitle">{{ event.event_title }}</div>
+            <div :style="s.eventDate">📅 {{ formatDate(event.event_date) }}</div>
+            <div :style="s.eventLocation">📍 {{ event.event_location || 'Location TBA' }}</div>
+          </div>
+        </div>
       </div>
 
     </div>
-
   </div>
-</div>
 </template>

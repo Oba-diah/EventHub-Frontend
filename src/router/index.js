@@ -8,7 +8,7 @@ import Profile from '@/components/Profile.vue'
 import SignUp from '@/components/SignUp.vue'
 import CreateEvent from '@/components/CreateEvent.vue'
 import EventList from '@/components/EventList.vue'
-import ContactPage from '@/components/ContactPage.vue'
+import EventDetails from '@/components/EventDetails.vue'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -24,19 +24,14 @@ const router = createRouter({
       component: EventList,
     },
     {
-      path: '/contact',
-      name: 'Contact',
-      component: ContactPage,
-    },
-    {
       path: '/profile',
       name: 'Profile',
       component: Profile,
     },
     {
-      path: '/eventdetails',
+      path: '/events/:id',
       name: 'EventDetails',
-      component: () => import('@/components/EventDetails.vue')
+      component: EventDetails,
     },
     {
       path: '/createevent',
@@ -67,7 +62,7 @@ const router = createRouter({
       path: '/admin',
       name: 'Admin',
       component: Admin,
-    },
+    }
   ],
 })
 

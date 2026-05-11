@@ -70,30 +70,31 @@ const viewEventDetails = (eventId) => {
           </v-img>
 
           <v-card-text class="pa-4">
-            <div class="event-category text-caption text-uppercase font-weight-medium mb-2">
-              {{ event.category }}
-            </div>
-            <h3 class="event-title text-h6 font-weight-bold mb-2">
-              {{ event.title }}
-            </h3>
-            <div class="event-details">
-              <v-icon size="16" class="me-1">mdi-calendar</v-icon>
-              <span class="text-body-2">{{ event.date }} at {{ event.time }}</span>
-            </div>
-            <div class="event-details mt-1">
-              <v-icon size="16" class="me-1">mdi-map-marker</v-icon>
-              <span class="text-body-2">{{ event.location }}</span>
-            </div>
+              <h3 class="event-title text-h6 font-weight-bold mb-2">
+                {{ event.title }}
+              </h3>
+              <div class="event-details">
+                <v-icon size="16" class="me-1">mdi-calendar</v-icon>
+                <span class="text-body-2">{{ event.date }} at {{ event.time }}</span>
+              </div>
+              <div class="event-details mt-1">
+                <v-icon size="16" class="me-1">mdi-map-marker</v-icon>
+                <span class="text-body-2">{{ event.location }}</span>
+              </div>
+              <div class="event-details mt-1">
+                <v-icon size="16" class="me-1">mdi-ticket-confirmation</v-icon>
+                <span class="text-body-2">{{ event.available_tickets ?? 'N/A' }} tickets left</span>
+              </div>
           </v-card-text>
 
           <v-card-actions class="pa-4 pt-0">
             <v-chip
-              :color="event.price === 'Free' ? 'success' : 'primary'"
+              :color="event.price === 0 || event.price === 'Free' ? 'success' : 'primary'"
               variant="flat"
               size="small"
               class="me-2"
             >
-              {{ event.price }}
+              {{ event.price === 0 ? 'Free' : `KSH ${event.price}` }}
             </v-chip>
             <v-spacer />
             <v-btn
@@ -117,6 +118,30 @@ const viewEventDetails = (eventId) => {
       </v-col>
     </v-row>
   </v-container>
+
+  <!-- Footer -->
+  <v-footer dark color="primary" class="mt-12">
+    <v-container>
+      <v-row>
+        <v-col cols="12" md="4">
+          <h3>Contact Us</h3>
+          <p><v-icon>mdi-phone</v-icon> +254 713 642 242</p>
+          <p><v-icon>mdi-email</v-icon> eventhub@gmail.com</p>
+          <p><v-icon>mdi-map-marker</v-icon> 123 Event Lane, City Center</p>
+        </v-col>
+        <v-col cols="12" md="4">
+          <h3>About EventHub</h3>
+          <p>Your go-to platform for discovering and creating amazing events. Join our community today!</p>
+        </v-col>
+      </v-row>
+      <v-divider class="my-4"></v-divider>
+      <v-row>
+        <v-col cols="12" class="text-center">
+          <p>&copy; 2026 EventHub. All rights reserved.</p>
+        </v-col>
+      </v-row>
+    </v-container>
+  </v-footer>
 </template>
 
 <style scoped>

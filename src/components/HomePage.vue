@@ -74,19 +74,19 @@ const featuredEvents = [
     title: 'Summer Music Festival',
     date: 'July 20, 2026',
     location: 'Riverfront Park',
-    image: 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?auto=format&fit=crop&w=800&q=80',
+    image: 'love.jpg',
   },
   {
     title: 'Design & Innovation Expo',
     date: 'August 12, 2026',
     location: 'Downtown Convention Center',
-    image: 'https://images.unsplash.com/photo-1515169067865-5387ec356754?auto=format&fit=crop&w=800&q=80',
+    image: 'pablo.jpg',
   },
   {
     title: 'Community Food Market',
     date: 'September 5, 2026',
     location: 'City Hall Plaza',
-    image: 'https://images.unsplash.com/photo-1498654896293-37aacf113fd9?auto=format&fit=crop&w=800&q=80',
+    image: 'community.jpg',
   },
 ]
 
@@ -172,10 +172,34 @@ const onCardMouseleave = (e) => { e.currentTarget.style.transform = 'translateY(
           <div :style="s.ctaCopy">
             <h2>Ready to plan your next event?</h2>
             <p>Whether you're attending or organizing, EventHub has the tools and support you need to make it a success.</p>
-            <v-btn color="primary" large to="/contact">Get in touch</v-btn>
+            <v-btn color="primary" large to="/signup">Get started</v-btn>
           </div>
         </v-sheet>
       </v-col>
     </v-row>
   </v-container>
+
+  <!-- Footer -->
+  <v-footer dark color="primary" class="mt-12">
+    <v-container>
+      <v-row>
+        <v-col cols="12" md="4">
+          <h3>Contact Us</h3>
+          <p><v-icon>mdi-phone</v-icon> +254 713 642 242</p>
+          <p><v-icon>mdi-email</v-icon> eventhub@gmail.com</p>
+          <p><v-icon>mdi-map-marker</v-icon> 123 Event Lane, City Center</p>
+        </v-col>
+        <v-col cols="12" md="4">
+          <h3>About EventHub</h3>
+          <p>Your go-to platform for discovering and creating amazing events. Join our community today!</p>
+        </v-col>
+      </v-row>
+      <v-divider class="my-4"></v-divider>
+      <v-row>
+        <v-col cols="12" class="text-center">
+          <p>&copy; 2026 EventHub. All rights reserved.</p>
+        </v-col>
+      </v-row>
+    </v-container>
+  </v-footer>
 </template>

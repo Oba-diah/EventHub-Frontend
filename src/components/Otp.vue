@@ -18,7 +18,7 @@ onMounted(() => {
   if (!email.value) {
     router.push('/login')
   }
-  if (localStorage.getItem('authToken')) {
+  if (localStorage.getItem('token')) {
     router.push('/')
   }
 })
@@ -48,10 +48,15 @@ const submit = async () => {
 
 const resendOtp = async () => {
   try {
-    await login({ email: email.value, password: localStorage.getItem('otpPassword') })
-    // OTP sent again
+    const savedPassword = localStorage.getItem('otpPassword')
+    if (!savedPassword) {
+      otpError.value = 'Unable to resend OTP. Please login again.'
+      return
+    }
+
+    await login({ email: email.value, password: savedPassword })
   } catch (err) {
-    // Handle error
+    otpError.value = err.response?.data?.message || err.message || 'Failed to resend OTP.'
   }
 }
 const s = {

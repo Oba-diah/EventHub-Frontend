@@ -164,8 +164,7 @@ const submitForm = async () => {
     // Send to backend
     const response = await api.post('events', formPayload, {
       headers: {
-        'Content-Type': 'multipart/form-data',
-        'Authorization': `Bearer ${localStorage.getItem('authToken')}`
+        'Content-Type': 'multipart/form-data'
       }
     })
 
