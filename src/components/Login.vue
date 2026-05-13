@@ -13,7 +13,6 @@ const form = ref({
 })
 
 const errors = ref({})
-const showPassword = ref(false)
 const loginError = ref(null)
 const isSubmitting = ref(false)
 
@@ -24,9 +23,9 @@ const isFormValid = computed(() =>
 )
 
 onMounted(() => {
-  const token = localStorage.getItem('token')
-
-  if (token) router.push('/')
+  if (localStorage.getItem('token')) {
+    router.push('/')
+  }
 
   const saved = localStorage.getItem('rememberedEmail')
   if (saved) {
@@ -63,20 +62,37 @@ const submit = async () => {
   isSubmitting.value = true
 
   try {
-    await login({
+    const res = await login({
       email: form.value.email,
       password: form.value.password
     })
 
-    if (form.value.rememberMe) {
-      localStorage.setItem('rememberedEmail', form.value.email)
-    } else {
-      localStorage.removeItem('rememberedEmail')
+    const data = res?.data
+
+    if (
+      data?.status === 'otp_sent' ||
+      data?.message === 'OTP sent to your email.'
+    ) {
+      localStorage.setItem('otpEmail', form.value.email)
+      localStorage.setItem('otpPassword', form.value.password)
+
+      if (form.value.rememberMe) {
+        localStorage.setItem('rememberedEmail', form.value.email)
+      } else {
+        localStorage.removeItem('rememberedEmail')
+      }
+
+      router.push('/otp')
+      return
     }
 
-    router.push('/otp')
+    loginError.value = data?.message || 'Login failed'
+
   } catch (err) {
-    loginError.value = error.value || 'Login failed'
+    loginError.value =
+      err.response?.data?.message ||
+      error.value ||
+      'Login failed'
   } finally {
     isSubmitting.value = false
   }
@@ -91,19 +107,24 @@ const s = {
     background: 'linear-gradient(135deg,#667eea,#764ba2)',
     padding: '1rem'
   },
+
   card: {
     background: 'white',
     padding: '2.5rem',
     borderRadius: '12px',
     width: '100%',
-    maxWidth: '420px'
+    maxWidth: '420px',
+    boxShadow: '0 10px 30px rgba(0,0,0,0.15)'
   },
+
   input: {
     width: '100%',
     padding: '.75rem',
     border: '1px solid #ddd',
-    borderRadius: '6px'
+    borderRadius: '6px',
+    marginBottom: '.5rem'
   },
+
   btn: {
     width: '100%',
     padding: '.75rem',
@@ -111,49 +132,78 @@ const s = {
     border: 'none',
     cursor: 'pointer',
     background: '#667eea',
-    color: 'white'
+    color: 'white',
+    marginTop: '1rem',
+    fontWeight: 'bold'
   },
+
+  btnDisabled: {
+    background: '#a5b4fc',
+    cursor: 'not-allowed'
+  },
+
   error: {
-    color: 'red',
-    fontSize: '.85rem'
+    color: '#dc2626',
+    fontSize: '.85rem',
+    marginBottom: '.5rem'
+  },
+
+  links: {
+    marginTop: '1rem',
+    display: 'flex',
+    justifyContent: 'space-between',
+    fontSize: '.9rem'
   }
 }
-
-const mx = (...objs) => Object.assign({}, ...objs)
 </script>
 
 <template>
   <div :style="s.wrapper">
     <div :style="s.card">
 
-      <h2>Login</h2>
+      <h2 style="margin-bottom: 1rem;">Login</h2>
 
       <div v-if="loginError || error" :style="s.error">
         {{ loginError || error }}
       </div>
 
-      <input v-model="form.email" placeholder="Email" :style="s.input" />
-      <span v-if="errors.email" :style="s.error">{{ errors.email }}</span>
+      <input
+        v-model="form.email"
+        placeholder="Email"
+        :style="s.input"
+      />
+      <span v-if="errors.email" :style="s.error">
+        {{ errors.email }}
+      </span>
 
       <input
         v-model="form.password"
-        :type="showPassword ? 'text' : 'password'"
+        type="password"
         placeholder="Password"
         :style="s.input"
       />
-      <span v-if="errors.password" :style="s.error">{{ errors.password }}</span>
+      <span v-if="errors.password" :style="s.error">
+        {{ errors.password }}
+      </span>
 
-      <label>
+      <label style="display:flex; align-items:center; gap:6px; margin-top:8px;">
         <input type="checkbox" v-model="form.rememberMe" />
         Remember me
       </label>
 
-      <button :style="s.btn" @click="submit" :disabled="isSubmitting">
+      <button
+        :style="isSubmitting ? {...s.btn, ...s.btnDisabled} : s.btn"
+        @click="submit"
+        :disabled="isSubmitting"
+      >
         {{ isSubmitting ? 'Signing in...' : 'Login' }}
       </button>
 
-      <router-link to="/signup">Create account</router-link>
-      <router-link to="/forgot-password" style="margin-left: 1rem;">Forgot password?</router-link>
+      <div :style="s.links">
+        <router-link to="/signup">Create account</router-link>
+        <router-link to="/forgot-password">Forgot password?</router-link>
+      </div>
+
     </div>
   </div>
 </template>

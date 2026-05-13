@@ -4,206 +4,240 @@ import { useRouter } from 'vue-router'
 import { useAuth } from '@/services/auth'
 
 const router = useRouter()
-const { verifyOtp, login, loading, error } = useAuth()
+const { verifyOtp, login, error, loading } = useAuth()
 
 const email = ref(localStorage.getItem('otpEmail') || '')
-const otp = ref('')
-const errors = ref({})
+const otpDigits = ref(['', '', '', '', '', ''])
+const otpInputs = ref([])
 const otpError = ref(null)
 const isSubmitting = ref(false)
 
-const isFormValid = computed(() => otp.value.length === 6 && !isSubmitting.value)
+const isValid = computed(() =>
+  otpDigits.value.every(d => d !== '') && !isSubmitting.value
+)
 
 onMounted(() => {
   if (!email.value) {
     router.push('/login')
   }
-  if (localStorage.getItem('token')) {
-    router.push('/')
-  }
 })
-
-const validate = () => {
-  errors.value = {}
-  if (!otp.value) errors.value.otp = 'OTP is required'
-  else if (otp.value.length !== 6 || !/^\d{6}$/.test(otp.value)) errors.value.otp = 'OTP must be 6 digits'
-  return !Object.keys(errors.value).length
-}
 
 const submit = async () => {
   otpError.value = null
-  if (!validate()) return
+
+  const otp = otpDigits.value.join('')
+
+  if (otp.length !== 6) {
+    otpError.value = 'Enter 6-digit OTP'
+    return
+  }
+
   isSubmitting.value = true
+
   try {
-    await verifyOtp({ email: email.value, otp: otp.value })
+    const res = await verifyOtp({
+      email: email.value,
+      otp: otp
+    })
+
+    const data = res?.data
+
+    if (!data?.token) {
+      throw new Error(data?.message || 'Invalid server response')
+    }
+
+    localStorage.setItem('token', data.token)
+    localStorage.setItem('user', JSON.stringify(data.user))
+
     localStorage.removeItem('otpEmail')
     localStorage.removeItem('otpPassword')
-    router.push(localStorage.getItem('isAdmin') === 'true' ? '/admin' : '/')
+
+    // 
+    if (Number(data.user.role_id) === 1) {
+     router.push('/admin')
+    } else {
+      router.push('/')
+    }
   } catch (err) {
-    otpError.value = error.value || 'OTP verification failed. Please try again.'
+    otpError.value =
+      err.response?.data?.message ||
+      err.message ||
+      'OTP verification failed'
   } finally {
     isSubmitting.value = false
   }
 }
 
-const resendOtp = async () => {
-  try {
-    const savedPassword = localStorage.getItem('otpPassword')
-    if (!savedPassword) {
-      otpError.value = 'Unable to resend OTP. Please login again.'
-      return
-    }
+const handleInput = (e, i) => {
+  const val = e.target.value.replace(/\D/g, '')
 
-    await login({ email: email.value, password: savedPassword })
-  } catch (err) {
-    otpError.value = err.response?.data?.message || err.message || 'Failed to resend OTP.'
+  if (val) {
+    otpDigits.value[i] = val.slice(-1)
+    if (i < 5) otpInputs.value[i + 1]?.focus()
+  } else {
+    otpDigits.value[i] = ''
   }
 }
-const s = {
+
+const handleKeydown = (e, i) => {
+  if (e.key === 'Backspace' && !otpDigits.value[i] && i > 0) {
+    otpInputs.value[i - 1]?.focus()
+  }
+}
+
+const handlePaste = (e) => {
+  e.preventDefault()
+
+  const paste = e.clipboardData
+    .getData('text')
+    .replace(/\D/g, '')
+    .slice(0, 6)
+
+  paste.split('').forEach((d, i) => {
+    otpDigits.value[i] = d
+  })
+
+  otpInputs.value[Math.min(5, paste.length - 1)]?.focus()
+}
+
+const resendOtp = async () => {
+  try {
+    await login({
+      email: email.value,
+      password: localStorage.getItem('otpPassword')
+    })
+  } catch (err) {
+    otpError.value =
+      err.response?.data?.message || 'Failed to resend OTP'
+  }
+}
+
+const styles = {
   wrapper: {
     minHeight: '100vh',
-    background: 'linear-gradient(135deg, #667eea, #764ba2)',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
-    padding: '1rem',
-    fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
+    background: 'linear-gradient(135deg,#667eea,#764ba2)',
+    padding: '20px'
   },
   card: {
-    background: 'white',
-    borderRadius: '12px',
-    padding: '2.5rem',
-    boxShadow: '0 10px 40px rgba(0,0,0,.2)',
+    background: '#fff',
     width: '100%',
     maxWidth: '420px',
+    padding: '30px',
+    borderRadius: '14px',
+    boxShadow: '0 15px 40px rgba(0,0,0,0.2)',
+    textAlign: 'center'
   },
-  header: { textAlign: 'center', marginBottom: '2rem' },
-  h1: { fontSize: '2rem', fontWeight: 700, color: '#1f2937', margin: '0 0 .5rem' },
-  subtitle: { color: '#6b7280', margin: 0 },
+  title: { fontSize: '24px', marginBottom: '6px' },
+  subtitle: { fontSize: '14px', color: '#666' },
+  email: { fontWeight: 'bold', marginBottom: '20px' },
   alert: {
-    padding: '.875rem 1rem',
-    background: '#fee2e2',
-    border: '1px solid #fecaca',
-    color: '#991b1b',
+    background: '#ffe5e5',
+    color: '#b00020',
+    padding: '10px',
     borderRadius: '8px',
-    fontSize: '.9rem',
-    marginBottom: '1.5rem',
+    marginBottom: '15px',
+    fontSize: '14px'
   },
-  form: { marginBottom: '1.5rem' },
-  field: { marginBottom: '1.25rem' },
-  label: { display: 'block', fontWeight: 500, color: '#1f2937', fontSize: '.95rem', marginBottom: '.5rem' },
+  otpBox: {
+    display: 'flex',
+    justifyContent: 'center',
+    gap: '10px',
+    marginBottom: '20px'
+  },
   input: {
-    width: '100%',
-    padding: '.75rem 1rem',
-    border: '2px solid #e5e7eb',
-    borderRadius: '6px',
-    fontSize: '1rem',
-    boxSizing: 'border-box',
-    outline: 'none',
-    fontFamily: 'inherit',
+    width: '45px',
+    height: '50px',
+    fontSize: '20px',
     textAlign: 'center',
-    fontSize: '1.5rem',
-    letterSpacing: '0.5rem',
+    border: '2px solid #ddd',
+    borderRadius: '8px',
+    outline: 'none'
   },
-  inputInvalid: { borderColor: '#dc2626' },
-  inputDisabled: { background: '#f3f4f6', cursor: 'not-allowed' },
-  error: { fontSize: '.875rem', color: '#dc2626', marginTop: '.25rem', display: 'block' },
   btn: {
     width: '100%',
-    padding: '.875rem 1rem',
-    borderRadius: '6px',
-    fontSize: '1rem',
-    fontWeight: 600,
+    padding: '12px',
+    background: '#667eea',
+    color: '#fff',
+    border: 'none',
+    borderRadius: '8px',
     cursor: 'pointer',
-    textDecoration: 'none',
-    border: '2px solid transparent',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: '.75rem',
+    fontSize: '16px',
+    fontWeight: 'bold',
+    marginBottom: '12px'
   },
-  primary: { background: '#667eea', color: 'white', borderColor: '#667eea' },
-  primaryDisabled: { background: '#cbd5e1', borderColor: '#cbd5e1', cursor: 'not-allowed' },
-  secondary: { background: '#f3f4f6', color: '#1f2937', borderColor: '#e5e7eb' },
-  spinner: {
-    display: 'inline-block',
-    width: '.85rem',
-    height: '.85rem',
-    marginRight: '.5rem',
-    border: '2px solid currentColor',
-    borderRightColor: 'transparent',
-    borderRadius: '50%',
-    animation: 'spin .6s linear infinite',
+  btnDisabled: {
+    background: '#bbb',
+    cursor: 'not-allowed'
   },
   resend: {
-    textAlign: 'center',
-    fontSize: '.9rem',
-    color: '#6b7280',
-    marginTop: '1rem',
+    fontSize: '14px',
+    color: '#666',
+    marginTop: '10px'
   },
   resendLink: {
     color: '#667eea',
-    textDecoration: 'none',
-    fontWeight: 500,
-    cursor: 'pointer',
+    fontWeight: 'bold',
+    cursor: 'pointer'
   },
+  back: {
+    display: 'block',
+    marginTop: '15px',
+    color: '#333',
+    textDecoration: 'none'
+  }
 }
 
-// Merges style objects — keeps conditional styles clean in template
-const mx = (...objs) => Object.assign({}, ...objs)
+const mx = (...o) => Object.assign({}, ...o)
 </script>
 
 <template>
-  <div :style="s.wrapper">
-    <div :style="s.card">
+  <div :style="styles.wrapper">
+    <div :style="styles.card">
 
-      <div :style="s.header">
-        <h1 :style="s.h1">Verify Your Email</h1>
-        <p :style="s.subtitle">Enter the 6-digit OTP sent to {{ email }}</p>
+      <h1 :style="styles.title">Verify OTP</h1>
+      <p :style="styles.subtitle">Code sent to</p>
+      <p :style="styles.email">{{ email }}</p>
+
+      <div v-if="otpError || error" :style="styles.alert">
+        {{ otpError || error }}
       </div>
 
-      <div v-if="otpError || error" :style="s.alert" role="alert">
-        <strong>Verification Failed</strong> — {{ otpError || error }}
+      <div :style="styles.otpBox">
+        <input
+          v-for="(d, i) in otpDigits"
+          :key="i"
+          :ref="el => otpInputs[i] = el"
+          maxlength="1"
+          inputmode="numeric"
+          :style="styles.input"
+          :value="d"
+          @input="handleInput($event, i)"
+          @keydown="handleKeydown($event, i)"
+          @paste="handlePaste"
+        />
       </div>
 
-      <div :style="s.form" @keydown.enter="submit">
+      <button
+        :style="mx(styles.btn, !isValid || isSubmitting || loading ? styles.btnDisabled : {})"
+        :disabled="!isValid || isSubmitting || loading"
+        @click="submit"
+      >
+        {{ isSubmitting ? 'Verifying...' : 'Verify OTP' }}
+      </button>
 
-        <!-- OTP -->
-        <div :style="s.field">
-          <label :style="s.label" for="otp">OTP Code</label>
-          <input
-            id="otp"
-            v-model="otp"
-            type="text"
-            :style="mx(s.input, errors.otp && s.inputInvalid, isSubmitting && s.inputDisabled)"
-            placeholder="000000"
-            maxlength="6"
-            :disabled="isSubmitting"
-            @input="otp = otp.replace(/\D/g, '')"
-          />
-          <span v-if="errors.otp" :style="s.error">{{ errors.otp }}</span>
-        </div>
-
-        <!-- Submit -->
-        <button
-          type="button"
-          :style="mx(s.btn, !isFormValid || loading ? s.primaryDisabled : s.primary)"
-          :disabled="!isFormValid || loading"
-          @click="submit"
-        >
-          <template v-if="isSubmitting || loading">
-            <span :style="s.spinner" /> Verifying...
-          </template>
-          <template v-else>Verify OTP</template>
-        </button>
+      <div :style="styles.resend">
+        Didn’t receive code?
+        <span :style="styles.resendLink" @click="resendOtp">
+          Resend OTP
+        </span>
       </div>
 
-      <div :style="s.resend">
-        Didn't receive the OTP?
-        <span :style="s.resendLink" @click="resendOtp">Resend OTP</span>
-      </div>
-
-      <router-link to="/login" :style="mx(s.btn, s.secondary)">Back to Login</router-link>
+      <router-link to="/login" :style="styles.back">
+        Back to Login
+      </router-link>
 
     </div>
   </div>

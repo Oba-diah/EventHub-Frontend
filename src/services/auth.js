@@ -1,100 +1,106 @@
-import { ref, computed } from 'vue'
+import { ref } from 'vue'
 import api from './api'
 
-const user = ref(JSON.parse(localStorage.getItem('user')) || null)
 const loading = ref(false)
 const error = ref(null)
 
+function setAuthHeader(token) {
+  if (token) {
+    api.defaults.headers.common['Authorization'] = `Bearer ${token}`
+  } else {
+    delete api.defaults.headers.common['Authorization']
+  }
+}
+
+const savedToken = localStorage.getItem('token')
+if (savedToken) {
+  setAuthHeader(savedToken)
+}
+
 export function useAuth() {
-    const isAuthenticated = computed(() => !!localStorage.getItem('token'))
-    const isAdmin = computed(() => user.value?.role_id === 1)
 
-    async function login(credentials) {
-        loading.value = true
-        error.value = null
+  const login = async (credentials) => {
+    loading.value = true
+    error.value = null
 
-        try {
-            if (!credentials.email || !credentials.password) {
-                throw new Error('Email and password required')
-            }
+    try {
+      const res = await api.post('/login', credentials)
 
-            const response = await api.post('login', credentials)
+      if (res.data.message === 'OTP sent to your email.') {
+        localStorage.setItem('otpEmail', credentials.email)
+        localStorage.setItem('otpPassword', credentials.password)
+      }
 
-            if (response.data.message === 'OTP sent to your email.') {
-                localStorage.setItem('otpEmail', credentials.email)
-                localStorage.setItem('otpPassword', credentials.password)
-                return response
-            }
-
-            throw new Error('Unexpected server response')
-        } catch (err) {
-            error.value = err.response?.data?.message || err.message
-            throw err
-        } finally {
-            loading.value = false
-        }
+      return res
+    } catch (err) {
+      error.value = err.response?.data?.message || err.message
+      throw err
+    } finally {
+      loading.value = false
     }
+  }
 
-    async function register(formData) {
-        loading.value = true
-        error.value = null
+  const verifyOtp = async (payload) => {
+    loading.value = true
+    error.value = null
 
-        try {
-            const response = await api.post('register', formData)
-            return response
-        } catch (err) {
-            error.value = err.response?.data?.message || 'Registration failed'
-            throw err
-        } finally {
-            loading.value = false
-        }
+    try {
+      const res = await api.post('/verify-otp', payload)
+
+      const token = res.data.token
+      const user = res.data.user
+
+      if (!token) {
+        throw new Error('Token missing from response')
+      }
+
+      localStorage.setItem('token', token)
+      localStorage.setItem('user', JSON.stringify(user))
+
+      setAuthHeader(token)
+
+      return res
+    } catch (err) {
+      error.value = err.response?.data?.message || err.message
+      throw err
+    } finally {
+      loading.value = false
     }
+  }
 
-    async function verifyOtp(credentials) {
-        loading.value = true
-        error.value = null
+  const register = async (userData) => {
+    loading.value = true
+    error.value = null
 
-        try {
-            const response = await api.post('verify-otp', credentials)
-            const { token, user: userData } = response.data
+    try {
+      const res = await api.post('/register', userData)
 
-            if (!token || !userData) {
-                throw new Error('Invalid server response')
-            }
-
-            user.value = userData
-
-            localStorage.setItem('token', token)
-            localStorage.setItem('user', JSON.stringify(userData))
-            localStorage.setItem('isAdmin', userData?.role_id === 1 ? 'true' : 'false')
-
-            return response
-        } catch (err) {
-            error.value = err.response?.data?.message || err.message
-            throw err
-        } finally {
-            loading.value = false
-        }
+      return res
+    } catch (err) {
+      error.value = err.response?.data?.message || err.message
+      throw err
+    } finally {
+      loading.value = false
     }
+  }
 
-    function logout() {
-        user.value = null
-        localStorage.removeItem('token')
-        localStorage.removeItem('user')
-        localStorage.removeItem('otpEmail')
-        localStorage.removeItem('otpPassword')
-        localStorage.removeItem('isAdmin')
-    }
+  const logout = async () => {
+    try {
+      await api.post('/logout')
+    } catch {}
 
-    return {
-        user,
-        loading,
-        error,
-        isAuthenticated,
-        isAdmin,
-        login,
-        register,
-        verifyOtp,
-        logout
-    }
+    localStorage.removeItem('token')
+    localStorage.removeItem('user')
+
+    setAuthHeader(null)
+  }
+
+  return {
+    login,
+    register,
+    verifyOtp,
+    logout,
+    loading,
+    error
+  }
 }

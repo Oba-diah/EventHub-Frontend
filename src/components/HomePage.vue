@@ -103,7 +103,6 @@ const onCardMouseleave = (e) => { e.currentTarget.style.transform = 'translateY(
           <h1 :style="s.h1">Discover experiences that move your world.</h1>
           <p :style="s.heroParagraph">EventHub brings the best concerts, festivals, workshops, and curated nights together in one place.</p>
           <v-btn color="primary" large to="/events">Browse Events</v-btn>
-          <v-btn variant="tonal" large class="ms-4" to="/contact">Contact Us</v-btn>
         </div>
       </v-col>
     </v-row>
@@ -145,7 +144,9 @@ const onCardMouseleave = (e) => { e.currentTarget.style.transform = 'translateY(
             <p :style="s.eventMeta">{{ event.date }} · {{ event.location }}</p>
           </v-card-text>
           <v-card-actions>
-            <v-btn text to="/eventdetails">View details</v-btn>
+           <v-btn text :to="`/events/${event.id}`">
+              View details
+            </v-btn>
           </v-card-actions>
         </v-card>
       </v-col>
@@ -166,17 +167,13 @@ const onCardMouseleave = (e) => { e.currentTarget.style.transform = 'translateY(
       </v-col>
     </v-row>
 
-    <v-row class="mt-12" align="center">
-      <v-col cols="12" md="8">
-        <v-sheet class="pa-10" elevation="2">
-          <div :style="s.ctaCopy">
-            <h2>Ready to plan your next event?</h2>
-            <p>Whether you're attending or organizing, EventHub has the tools and support you need to make it a success.</p>
-            <v-btn color="primary" large to="/signup">Get started</v-btn>
-          </div>
-        </v-sheet>
+    <v-row class="mt-12" align="center" justify="center">
+      <v-col cols="12" md="8" :style="s.ctaCopy">
+        <h2>Ready to find your next unforgettable experience?</h2>
+        <p>Join EventHub today and start exploring the best events happening around you. Your next adventure is just a click away.</p>
+        <v-btn color="primary" large to="/events">Browse Events</v-btn>
       </v-col>
-    </v-row>
+    </v-row>  
   </v-container>
 
   <!-- Footer -->

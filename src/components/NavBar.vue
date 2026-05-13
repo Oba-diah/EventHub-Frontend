@@ -5,21 +5,28 @@ import { useAuth } from '../services/auth'
 
 const router = useRouter()
 const { logout } = useAuth()
+
 const isLoggedIn = ref(false)
 const isAdmin = ref(false)
 
 onMounted(() => {
   const token = localStorage.getItem('token')
-  const adminStatus = localStorage.getItem('isAdmin')
-  
+  const user = JSON.parse(localStorage.getItem('user') || 'null')
+
   isLoggedIn.value = !!token
-  isAdmin.value = adminStatus === 'true' || adminStatus === true
+
+  isAdmin.value = Number(user?.role_id) === 1
 })
 
 const logoutAndReturn = () => {
   logout()
+
+  localStorage.removeItem('token')
+  localStorage.removeItem('user')
+
   isLoggedIn.value = false
   isAdmin.value = false
+
   router.push('/')
 }
 </script>

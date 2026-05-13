@@ -14,7 +14,6 @@ import * as labsComponents from 'vuetify/labs/components'
 
 
 
-
 const vuetify = createVuetify({
   components: {
     ...components,
@@ -43,3 +42,4 @@ app.use(vuetify)
 
 
 app.mount('#app')
+
