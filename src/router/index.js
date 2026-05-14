@@ -11,6 +11,8 @@ import CreateEvent from '@/components/CreateEvent.vue'
 import EventList from '@/components/EventList.vue'
 import EventDetails from '@/components/EventDetails.vue'
 import VerifyEmail from '@/components/VerifyEmail.vue'
+import Terms from '@/components/Terms.vue'
+import Privacy from '@/components/Privacy.vue'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -69,6 +71,18 @@ const router = createRouter({
       path: '/signup',
       name: 'SignUp',
       component: SignUp,
+    },
+
+    {
+      path: '/terms',
+      name: 'Terms',
+      component: Terms,
+    },
+
+    {
+      path: '/privacy',
+      name: 'Privacy',
+      component: Privacy,
     },
 
     {
