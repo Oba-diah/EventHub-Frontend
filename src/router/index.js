@@ -10,7 +10,6 @@ import SignUp from '@/components/SignUp.vue'
 import CreateEvent from '@/components/CreateEvent.vue'
 import EventList from '@/components/EventList.vue'
 import EventDetails from '@/components/EventDetails.vue'
-import VerifyEmail from '@/components/VerifyEmail.vue'
 import Terms from '@/components/Terms.vue'
 import Privacy from '@/components/Privacy.vue'
 
@@ -91,11 +90,7 @@ const router = createRouter({
       component: Admin,
     },
 
-    {
-    path: '/verify-email/:id',
-    name: 'VerifyEmail',
-    component: VerifyEmail
-    }
+    
   ],
 })
 

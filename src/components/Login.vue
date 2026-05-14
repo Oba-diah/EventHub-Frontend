@@ -24,7 +24,7 @@ const isFormValid = computed(() =>
 
 onMounted(() => {
   if (localStorage.getItem('token')) {
-    router.push('/')
+    router.push('/dashboard')
   }
 
   const saved = localStorage.getItem('rememberedEmail')
@@ -62,19 +62,14 @@ const submit = async () => {
   isSubmitting.value = true
 
   try {
-    const res = await login({
+    const data = await login({
       email: form.value.email,
       password: form.value.password
     })
 
-    const data = res?.data
-
-    if (
-      data?.status === 'otp_sent' ||
-      data?.message === 'OTP sent to your email.'
-    ) {
+    // ✅ OTP FLOW SUCCESS (your backend behavior)
+    if (data?.status === 'otp_sent') {
       localStorage.setItem('otpEmail', form.value.email)
-      localStorage.setItem('otpPassword', form.value.password)
 
       if (form.value.rememberMe) {
         localStorage.setItem('rememberedEmail', form.value.email)
@@ -86,7 +81,8 @@ const submit = async () => {
       return
     }
 
-    loginError.value = data?.message || 'Login failed'
+    // ❌ Unexpected response
+    loginError.value = data?.message || 'Unexpected login response'
 
   } catch (err) {
     loginError.value =
@@ -97,109 +93,63 @@ const submit = async () => {
     isSubmitting.value = false
   }
 }
-
-const s = {
-  wrapper: {
-    minHeight: '100vh',
-    display: 'flex',
-    justifyContent: 'center',
-    alignItems: 'center',
-    background: 'linear-gradient(135deg,#667eea,#764ba2)',
-    padding: '1rem'
-  },
-
-  card: {
-    background: 'white',
-    padding: '2.5rem',
-    borderRadius: '12px',
-    width: '100%',
-    maxWidth: '420px',
-    boxShadow: '0 10px 30px rgba(0,0,0,0.15)'
-  },
-
-  input: {
-    width: '100%',
-    padding: '.75rem',
-    border: '1px solid #ddd',
-    borderRadius: '6px',
-    marginBottom: '.5rem'
-  },
-
-  btn: {
-    width: '100%',
-    padding: '.75rem',
-    borderRadius: '6px',
-    border: 'none',
-    cursor: 'pointer',
-    background: '#667eea',
-    color: 'white',
-    marginTop: '1rem',
-    fontWeight: 'bold'
-  },
-
-  btnDisabled: {
-    background: '#a5b4fc',
-    cursor: 'not-allowed'
-  },
-
-  error: {
-    color: '#dc2626',
-    fontSize: '.85rem',
-    marginBottom: '.5rem'
-  },
-
-  links: {
-    marginTop: '1rem',
-    display: 'flex',
-    justifyContent: 'space-between',
-    fontSize: '.9rem'
-  }
-}
 </script>
 
 <template>
-  <div :style="s.wrapper">
-    <div :style="s.card">
+  <div style="min-height:100vh;display:flex;justify-content:center;align-items:center;background:linear-gradient(135deg,#667eea,#764ba2);padding:1rem;">
 
-      <h2 style="margin-bottom: 1rem;">Login</h2>
+    <div style="background:white;padding:2.5rem;border-radius:12px;width:100%;max-width:420px;box-shadow:0 10px 30px rgba(0,0,0,0.15);">
 
-      <div v-if="loginError || error" :style="s.error">
+      <h2 style="margin-bottom:1rem;">Login</h2>
+
+      <!-- ERROR -->
+      <div v-if="loginError || error" style="color:#dc2626;font-size:.9rem;margin-bottom:1rem;">
         {{ loginError || error }}
       </div>
 
+      <!-- EMAIL -->
       <input
         v-model="form.email"
         placeholder="Email"
-        :style="s.input"
+        style="width:100%;padding:.75rem;border:1px solid #ddd;border-radius:6px;margin-bottom:.5rem;"
       />
-      <span v-if="errors.email" :style="s.error">
+      <span v-if="errors.email" style="color:#dc2626;font-size:.85rem;">
         {{ errors.email }}
       </span>
 
+      <!-- PASSWORD -->
       <input
         v-model="form.password"
         type="password"
         placeholder="Password"
-        :style="s.input"
+        style="width:100%;padding:.75rem;border:1px solid #ddd;border-radius:6px;margin-top:.5rem;"
       />
-      <span v-if="errors.password" :style="s.error">
+      <span v-if="errors.password" style="color:#dc2626;font-size:.85rem;">
         {{ errors.password }}
       </span>
 
-      <label style="display:flex; align-items:center; gap:6px; margin-top:8px;">
+      <!-- REMEMBER ME -->
+      <label style="display:flex;align-items:center;gap:6px;margin-top:10px;">
         <input type="checkbox" v-model="form.rememberMe" />
         Remember me
       </label>
 
+      <!-- BUTTON -->
       <button
-        :style="isSubmitting ? {...s.btn, ...s.btnDisabled} : s.btn"
         @click="submit"
         :disabled="isSubmitting"
+        style="width:100%;padding:.75rem;margin-top:1rem;border:none;border-radius:6px;cursor:pointer;font-weight:bold;"
+        :style="{
+          background: isSubmitting ? '#a5b4fc' : '#667eea',
+          color: 'white',
+          cursor: isSubmitting ? 'not-allowed' : 'pointer'
+        }"
       >
         {{ isSubmitting ? 'Signing in...' : 'Login' }}
       </button>
 
-      <div :style="s.links">
+      <!-- LINKS -->
+      <div style="margin-top:1rem;display:flex;justify-content:space-between;font-size:.9rem;">
         <router-link to="/signup">Create account</router-link>
         <router-link to="/forgot-password">Forgot password?</router-link>
       </div>

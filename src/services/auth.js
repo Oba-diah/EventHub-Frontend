@@ -31,7 +31,7 @@ export function useAuth() {
         localStorage.setItem('otpPassword', credentials.password)
       }
 
-      return res
+      return res.data
     } catch (err) {
       error.value = err.response?.data?.message || err.message
       throw err
